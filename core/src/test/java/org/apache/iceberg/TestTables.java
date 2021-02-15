@@ -21,6 +21,7 @@ package org.apache.iceberg;
 
 import java.io.File;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.RuntimeIOException;
@@ -36,7 +37,15 @@ import static org.apache.iceberg.TableMetadata.newTableMetadata;
 
 public class TestTables {
 
+  public static AtomicLong NUM_FILES_READ = new AtomicLong(0);
+  public static AtomicLong NUM_BYTES_READ = new AtomicLong(0);
+
   private TestTables() {
+  }
+
+  public static void resetCounters() {
+    NUM_FILES_READ.set(0);
+    NUM_BYTES_READ.set(0);
   }
 
   private static TestTable upgrade(File temp, String name, int newFormatVersion) {
@@ -229,7 +238,10 @@ public class TestTables {
 
     @Override
     public InputFile newInputFile(String path) {
-      return Files.localInput(path);
+      InputFile result = Files.localInput(path);
+      NUM_FILES_READ.incrementAndGet();
+      NUM_BYTES_READ.addAndGet(result.getLength());
+      return result;
     }
 
     @Override
