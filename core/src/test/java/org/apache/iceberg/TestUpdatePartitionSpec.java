@@ -425,6 +425,36 @@ public class TestUpdatePartitionSpec extends TableTestBase {
   }
 
   @Test
+  public void testAddDeleteAddName() {
+    PartitionSpec updated1 = new BaseUpdatePartitionSpec(formatVersion, PARTITIONED)
+            .removeField(bucket("id", 16))
+            .apply();
+
+    PartitionSpec updated2 = new BaseUpdatePartitionSpec(formatVersion, updated1)
+            .removeField("category")
+            .apply();
+
+    PartitionSpec updated3 = new BaseUpdatePartitionSpec(formatVersion, updated2)
+            .addField("category")
+            .apply();
+
+    PartitionSpec v1Expected = PartitionSpec.builderFor(SCHEMA)
+            .identity("category")
+            .day("ts")
+            .alwaysNull("id", "shard")
+            .build();
+
+    V1Assert.assertEquals("Should match expected spec", v1Expected, updated3);
+
+    PartitionSpec v2Expected = PartitionSpec.builderFor(SCHEMA)
+            .add(id("ts"), 1001, "ts_day", Transforms.day(Types.TimestampType.withZone()))
+            .add(id("category"), 1002, "category", Transforms.identity(Types.StringType.get()))
+            .build();
+
+    V2Assert.assertEquals("Should match expected spec", v2Expected, updated3);
+  }
+
+  @Test
   public void testRemoveNewlyAddedFieldByName() {
     AssertHelpers.assertThrows("Should fail trying to remove unknown field",
         IllegalArgumentException.class, "Cannot delete newly added field",
